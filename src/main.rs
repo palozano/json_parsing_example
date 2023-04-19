@@ -2,6 +2,7 @@
 use serde::{Deserialize, Serialize};
 
 const URL_REDDIT: &str = "https://tradestie.com/api/v1/apps/reddit";
+const URL_COINGECKO: &str = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false";
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct RedditStock {
@@ -12,19 +13,40 @@ struct RedditStock {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct CoinCapInfo {
-    info: String,
-    rank: u32,
+struct Roi {
+    times: f64,
+    currency: String,
+    percentage: f64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct CoinGeckoInfo {
+    id: String,
     symbol: String,
     name: String,
-    supply: f64,
+    image: String,
+    current_price: f64,
+    market_cap: f64,
+    market_cap_rank: u32,
+    fully_diluted_valuation: Option<f64>,
+    total_volume: f64,
+    high_24h: f64,
+    low_24h: f64,
+    price_change_24h: f64,
+    price_change_percentage_24h: f64,
+    market_cap_change_24h: f64,
+    market_cap_change_percentage_24h: f64,
+    circulating_supply: f64,
+    total_supply: Option<f64>,
     max_supply: Option<f64>,
-    market_cap_usd: f64,
-    volume_usd_24h: f64,
-    price_usd: f64,
-    change_percent_24h: f64,
-    vwap_24h: f64,
-    explorer: String,
+    ath: f64,
+    ath_change_percentage: f64,
+    ath_date: String,
+    atl: f64,
+    atl_change_percentage: f64,
+    atl_date: String,
+    roi: Option<Roi>,
+    last_updated: String,
 }
 
 #[tokio::main]
@@ -35,15 +57,6 @@ async fn main() -> Result<(), reqwest::Error> {
         .await? // await the response
         .json::<Vec<RedditStock>>() // deserealize the JSON response as a type Vec<Todo>
         .await?;
-
-    let coins = reqwest::Client::new()
-        .get(URL_COINCAP)
-        .send() // send the request
-        .await? // await the response
-        .json::<Vec<CoinCapInfo>>() // deserealize the JSON response as a type Vec<Todo>
-        .json() // deserealize the JSON response as a type Vec<Todo>
-        .await?;
-    println!("{:#?}", coins);
 
     let best_tickets = stocks
         .into_iter()
@@ -59,6 +72,14 @@ async fn main() -> Result<(), reqwest::Error> {
             &best_tickets
         );
     }
+
+    let coins = reqwest::Client::new()
+        .get(URL_COINGECKO)
+        .send() // send the request
+        .await? // await the response
+        .json::<Vec<CoinGeckoInfo>>() // deserealize the JSON response as a type Vec<Todo>
+        .await?;
+    println!("CoinGecko -> {:#?}", coins);
 
     Ok(())
 }
