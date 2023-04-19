@@ -1,68 +1,64 @@
 /// Import the implementation for the data
 use serde::{Deserialize, Serialize};
 
+const URL_REDDIT: &str = "https://tradestie.com/api/v1/apps/reddit";
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct Todo {
-    #[serde(rename = "userId")] // rename the field to match the json
-    user_id: i32,
-    id: Option<i32>,
-    title: String,
-    completed: bool,
+struct RedditStock {
+    no_of_comments: u32,
+    sentiment: String,
+    sentiment_score: f32,
+    ticker: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct CoinCapInfo {
+    info: String,
+    rank: u32,
+    symbol: String,
+    name: String,
+    supply: f64,
+    max_supply: Option<f64>,
+    market_cap_usd: f64,
+    volume_usd_24h: f64,
+    price_usd: f64,
+    change_percent_24h: f64,
+    vwap_24h: f64,
+    explorer: String,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), reqwest::Error> {
-    let get_todos = reqwest::Client::new()
-        .get("https://jsonplaceholder.typicode.com/todos?userId=1")
+    let stocks = reqwest::Client::new()
+        .get(URL_REDDIT)
         .send() // send the request
         .await? // await the response
-        .json::<Vec<Todo>>() // deserealize the JSON response as a type Vec<Todo>
+        .json::<Vec<RedditStock>>() // deserealize the JSON response as a type Vec<Todo>
         .await?;
-    println!("{:#?}", get_todos);
 
-    // You can do lots of things with the data
-    let text = get_todos
-        .clone()
+    let coins = reqwest::Client::new()
+        .get(URL_COINCAP)
+        .send() // send the request
+        .await? // await the response
+        .json::<Vec<CoinCapInfo>>() // deserealize the JSON response as a type Vec<Todo>
+        .json() // deserealize the JSON response as a type Vec<Todo>
+        .await?;
+    println!("{:#?}", coins);
+
+    let best_tickets = stocks
         .into_iter()
-        .map(|t| t.title)
-        .collect::<String>();
-    println!("Text -> {}", text);
+        .filter(|s| s.sentiment_score > 0.5)
+        .collect::<Vec<RedditStock>>();
 
-    let sum = get_todos
-        .clone()
-        .into_iter()
-        .fold(0, |acc, t| acc + t.id.unwrap_or(0));
-    println!("Sum -> {}", sum);
-
-    // It's possible to send data as JSON
-    let new_todo = Todo {
-        user_id: 1,
-        id: None,
-        title: "New Todo".to_string(),
-        completed: false,
-    };
-    let post_todo: Todo = reqwest::Client::new()
-        .post("https://jsonplaceholder.typicode.com/todos") // create a POST request
-        .json(&new_todo) // serialize the (Todo) data as JSON
-        .send() // send the request
-        .await? // await the response
-        .json() // deserialize the JSON response as a type Todo (in the type annotation)
-        .await?;
-    println!("Posted TODO: {:#?}", post_todo);
-
-    // Even from literals can JSONs be created
-    let post_todo: Todo = reqwest::Client::new()
-        .post("https://jsonplaceholder.typicode.com/todos")
-        .json(&serde_json::json!({
-            "userId": 1,
-            "title": "New Todo",
-            "completed": false
-        }))
-        .send() // send the request
-        .await? // await the response
-        .json() // deserialize the JSON response as a type Todo
-        .await?;
-    println!("Hardcoded posted TODO: {:#?}", post_todo);
+    if best_tickets.len() > 10 {
+        println!("10 best Reddit tickers -> {:#?}", &best_tickets[0..10]);
+    } else {
+        println!(
+            "{} best Reddit tickers -> {:#?}",
+            best_tickets.len(),
+            &best_tickets
+        );
+    }
 
     Ok(())
 }
